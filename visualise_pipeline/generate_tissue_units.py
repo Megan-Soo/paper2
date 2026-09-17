@@ -19,7 +19,6 @@ steps = {"1a. Labelled lobes mask": "Output of vessel_to_lobe.py",
 
 # region:Load saved arrays
 sample_child = 'visualise_pipeline/generate_tissue_units_001.npz'
-sample_adult = 'visualise_pipeline/generate_tissue_unitsEXAM5332.npz'
 path = sample_child
 arrs = np.load(path,allow_pickle=True)
 steps = arrs['steps'].item()
