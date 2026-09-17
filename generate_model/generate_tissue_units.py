@@ -642,6 +642,7 @@ def main():
     ps.set_background_color([0, 0, 0])
     ps.show()
 
+    # region: lines for visualise_pipeline
     # steps = {"1a. Labelled lobes mask": "Output of vessel_to_lobe.py",
     #          f"1b. Erode lobes mask by kernel radius {args.erode}": f"Leaving behind the 'core' region where conducting airways are likely to occupy.",
     #          "1c. Remove vessels from lobes mask":"Retain lung parenchyma voxels for calculating normalised lung tissue density.",
@@ -678,6 +679,7 @@ def main():
     #                     step6_5b=step6_5b,
     #                     spacing=spacing
     #                     )
+    # endregion
 
 if __name__ == "__main__":
     main()
