@@ -4,16 +4,17 @@ import numpy as np
 
 """
 steps = {"1a. Labelled lobes mask": "Output of vessel_to_lobe.py",
-        "1b. Erode lobes mask by kernel radius 2": f"Leaving behind the 'core' region where conducting airways are likely to occupy.",
-        "1c. Remove vessels from lobes mask":"Retain lung parenchyma voxels for calculating normalised lung tissue density.",
-        "2a. Raw lung MRI": "",
-        "2b. Median-filtered lung MRI": "Apply a median filter with radius 2. [med_filtered.nii.gz].",
-        "3. Normalised tissue density":"Median-filtered lung parenchyma signals normalised against the average chest wall muscle signal & corrected for lung & muscle decay times at 3T. [density_mask.nii.gz, density_histogram.png].",
-        "4. Density bins":"Divide the density range into 10 bins and assign labels to the respective regions. [density_bins.nii.gz]",
-        "5. Generate acini tissue units":"Median density values are used to obtain the relative spatial distribution of acini and their relative volumes (unscaled).",
-        "6. Estimate acini volumes":"Linearly scale the acini volumes so that their total sums to the volume of lung parenchyma voxels.",
-        "7. Assign acini to lobes":"For each lobe, export [.ipdata] for grow_lobes.py & save acini volumes in [.exdata]."
-    }
+         "1b. Erode lobes mask by kernel radius 2": f"Leaving behind the 'core' region where conducting airways are likely to occupy.",
+         "1c. Remove vessels from lobes mask":"Retain lung parenchyma voxels for calculating normalised lung tissue density.",
+         "2a. Raw lung MRI": "",
+         "2b. Median-filtered lung MRI": "Apply a median filter with radius 2. [med_filtered.nii.gz].",
+         "3. Normalised tissue density":"Median-filtered lung parenchyma signals normalised against the average chest wall muscle signal \
+             & corrected for lung & muscle decay times at 3T. [density_mask.nii.gz, density_histogram.png].",
+         "4. Density bins":"Divide the density range into 10 bins and assign labels to the respective regions. [density_bins.nii.gz]",
+         "5. Generate acini tissue units":"Median density values are used to obtain the relative spatial distribution of acini and their relative volumes.\
+             Linearly scale the acini volumes so that their total sums to the volume of lung parenchyma voxels. [tissue_units.npz]",
+         "6. Assign acini to lobes":"For each lobe, export [.ipdata] for grow_lobes.py & save acini volumes in [.exdata]."
+        }
 """
 
 # region:Load saved arrays
