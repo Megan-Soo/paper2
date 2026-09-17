@@ -1,0 +1,14 @@
+FRC        1.2186 ! edited ventilation.f90 doesn't remove vol of 1d tree
+constrict  1.0
+T_interval 3.33 ! assume 0.3 Hz, matching PREFUL method (https://pmc.ncbi.nlm.nih.gov/articles/PMC9059092/, https://onlinelibrary.wiley.com/doi/epdf/10.1002/mrm.26893)
+Gdirn      2
+press_in   0.0 ! atmospheric pressure, 0 Pa
+COV        0.1
+RMaxMean   0.749
+RMinMean   1.1366
+i_to_e_ratio 1.0
+refvol     0.5 ! to define reference undeformed volume for intiialising compliance for each unit
+volume_target 320000
+pmus_step  -196.133 ! an initial guess of the outward muscle pressure. Is scaled up/down to meet the volume target in one cycle
+expiration_type active
+chest_wall_compliance 2039.4324

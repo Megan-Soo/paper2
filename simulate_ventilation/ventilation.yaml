@@ -1,0 +1,18 @@
+subject_list: ['vol1401/tree'] #['EXAM5373']
+gradwarp: False #True # will output results to {subject}/gradwarp
+weight_list: [0] # [33] # [] # to calculate tidal volume (6 mL/kg)
+volume_target: 0.3 #0.35 # L. will override 6mL/kg if provided. for 67kg F, TV = 6*67=0.402L, wayy more than measured by phase-resolve UTE
+i_to_e_ratio: 0.5 #1 # 0.5 for non-preful. 1.0 for preful/mocolor
+breath_duration: 4.0 # seconds
+chest_wall_compliance: 180 #195 # Sharp 1970: 4 mL/cmH2O/kg (children); 3 mL/cmH2O/kg (adults)
+export_terminal_ph: 'terminal'
+
+grown_filename: 'grown'
+
+dirs:
+  hpc: '/home/msoo935/hpc/paper2'
+  img_analysis: /home/msoo935/hpc/CHLA/ #'{dirs.hpc}/results'
+  output_dir: /home/msoo935/hpc/CHLA/ #'{dirs.hpc}/results'
+
+filenames:
+  init_vol_ipfiel: 'init_vol.ipfiel'

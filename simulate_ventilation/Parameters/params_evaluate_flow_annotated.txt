@@ -1,0 +1,48 @@
+SETTING UP AIRWAY MODEL CHARACTERISTICS BASED ON SUBJECT DATA AND GRAVITATIONAL AXIS
+
+Gdirn      2		! 1(x), 2(y), 3(z); upright lung (for our models) is z, supine is y. To find max & min coords in the Gdirn direction.
+
+COV        0.1		! Coeff of Variation of tissue compliance. set_initial_volume() [geom.f90] assigns variating vols to acini based on gravitationally-dependent location. COV is multiplied by random number from -1.0 to 1.0 (line 3129). I think they just want to make a nonlinear/nonconstant compliance effect, but not ref any lit value.
+
+FRC        3.67		! to 'distribute initial tissue unit volumes along the gravitational axis'. set_initial_volume() [geom.f90] assigns variating vols to acini based on gravitational dependent location.
+
+RMaxMean   0.79		! ratio Max to Mean Volume of acinus; normalised max acinar volume across all units in the lung model. In set_initial_volume(), used to calc max acinar unit volume.
+
+RMinMean   1.29		! ratio Min to Mean Volume of acinus; normalised min acinar volume across all units in the lung model. In set_initial_volume(), used to calc min acinar unit volume.
+
+
+
+
+refvol     0.5		! get undeformed acinus unit volume (at 'zero stress'). undef is used to cal acinus unit's tissue compliance in zero gravity in subroutine  tissue_compliance() - V/P -> add chest wall compliance -> est unit's elastic recoil pressure.
+
+press_in   0.0		! fixed pressure at top of tree (entry to model) (Pa)
+
+constrict  1.0		! for applying uniform constriction. Not used in any equation in ventilation.f90 though.
+
+chest_wall_compliance 2039.4324		! 200 ml/cmH2O == 2039 mm3/Pa. To calc compliance of each acinus unit [tissue_compliance()]: used w/ var 'undef' which distributes acinar volume along gravitationally-dependent axis (based on FRC and ref vol); thus, tissue compliance varies along gravitational axis too, instead of being uniform throughout the lung. Then, also used to calc the Total Model Compliance, totalC (sum of compliances of all acini units).
+
+
+
+SOLVING FOR A BREATH CYCLE
+
+T_interval 4.0		! Total length of breath (1 cycle) in seconds.
+
+
+i_to_e_ratio 1.0	! ratio of inspiration to expiration time. Boundary condition for calc expiration time, Texpn, for a single breath -> used to set increment in driving muscle pressure (set_driving_pressures())
+
+!!! calculate key variables from the boundary conditions/problem parameters
+    Texpn = T_interval / (1.0_dp+i_to_e_ratio)
+    Tinsp = T_interval - Texpn
+
+
+pmus_step  -196.133	! -2 cmH2O == -196.133 Pa. Negative value indicates at expiration ie FRC. Change in pleural pressure for driving flow (Pa) per time interval (dt, from params_main.txt). 2 eqns for driving pressures: 'active' and 'passive' expiration. Also to set increment in driving muscle pressure.
+
+
+expiration_type active	! active (sine wave) or passive. Also to set increment in driving muscle pressure.
+
+
+DETERMINING PEAK OF BREATH CYCLE
+
+volume_target 400000	! 8.0e5_dp !mm^3 = 800 ml. target tidal volume (mm^3). In solving for a single breath, volume_target helps determine whether simulation will continue (ventilation_continue()). Model will increase p_mus if current tidal vol (sum_tidal) < volume_target, & vice versa. To simulate changing muscle pressure that drives breathing.
+
+

@@ -1,0 +1,9 @@
+results/
+__pycache__/
+*.ini
+*.vscode
+*.png
+*.sh
+
+!cluster_map.png
+!Ccw_data_ATS_review_2002.png

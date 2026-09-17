@@ -1,0 +1,4 @@
+num_brths 10		! number of breaths
+num_itns 200 		! min no. of iterations to attempt when solving for new flow in acinus to confirm convergence (to some extent of confidence, will still throw warning)
+dt       0.01		! small time step so that rate of change of pressures related to acinus can be assumed to be constant (pg. 7 Swan et al, 2011)
+err_tol  1.00000E-8 	!acceptable convergence threshold when solving for flow and pressure in each acinus (cf. evaluate_vent_step, ventilation.f90) 
