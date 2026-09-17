@@ -299,7 +299,7 @@ def main():
     parser = argparse.ArgumentParser(description="Grow tree and assign initial volume to terminal nodes. Generate.npz w/ nearest idx and spacing")
     parser.add_argument("-subject_dir", type=str, required=True, help="Assuming dir contains all required files (ipnode,ipelem,ipfiel,ipdata).")
     parser.add_argument("-outdir", type=str, required=True, help="DIR to save the grown files")
-    parser.add_argument("-ref_img", type=str, required=False, help="Filepath to image volume to get spacing for .npz")
+    parser.add_argument("-ref_img", type=str, required=False, help="Filepath to image volume to get spacing for .npz storing indices for mapping transforms.")
     args = parser.parse_args()
 
     f_im = args.ref_img
