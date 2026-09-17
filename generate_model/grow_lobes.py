@@ -299,7 +299,7 @@ def main():
     parser = argparse.ArgumentParser(description="Grow tree and assign initial volume to terminal nodes. Generate.npz w/ nearest idx and spacing")
     parser.add_argument("-subject_dir", type=str, required=True, help="Assuming dir contains all required files (ipnode,ipelem,ipfiel,ipdata).")
     parser.add_argument("-outdir", type=str, required=True, help="DIR to save the grown files")
-    parser.add_argument("-ref_img", type=str, required=True, help="Filepath to image volume to get spacing for .npz")
+    parser.add_argument("-ref_img", type=str, required=False, help="Filepath to image volume to get spacing for .npz")
     args = parser.parse_args()
 
     f_im = args.ref_img
@@ -362,7 +362,6 @@ def main():
 
     init_vol_all = []
     term_elem_num_all = []
-    signals_all = [] # (MS) added 27-Mar-2026: for fMRI-mapped units
     for compartment in lobes:
         path_exdata = os.path.join(output_directory, exdata_dict.get(compartment))
         dict_exdata = read_exnodedata(path_exdata,extn='.exdata')
@@ -371,12 +370,6 @@ def main():
         # accumulate initial volumes of processed compartments
         init_vol_all = init_vol_all + init_vol
 
-        # (MS) added 27-Mar-2026: for fMRI-mapped units. if dict_exdata[('signals',n_phases)] avail,
-        signal_keys = [k for k in dict_exdata.keys() if 'signals' in k[0].lower()] # check if any keys contain 'signals'
-        if signal_keys:
-            signals = dict_exdata[signal_keys[0]]
-            signals_all = signals_all+signals
-        
         # read {compartment}_mapping.txt
         path_mapping = os.path.join(output_directory, mapping_dict.get(compartment))
         mapping_list_2d = read_mapping_txt(path_mapping)
@@ -403,18 +396,19 @@ def main():
     total_volume = sum(init_vol_all)
     print(f"Total volume of terminal units: {total_volume/10**6:.2f} L")
 
-    # ----------- Find nearest indices and save in .npz ------------
-    coords = np.array(read_ipnode(os.path.join(output_directory,filename))) # Read grown.ipnode
-    
-    if np.any(coords[:,2] < 0): # check if negative z coords (indicating that Z axis was flip to get LH coord system)
-        print('flipping z axis...')
-        coords[:, 2] = -coords[:, 2]# flip back to positive z before getting indices
-    
-    img = sitk.ReadImage(f_im) # Read image
+    if f_im:
+        # ----------- Find nearest indices and save in .npz ------------
+        coords = np.array(read_ipnode(os.path.join(output_directory,filename))) # Read grown.ipnode
+        
+        if np.any(coords[:,2] < 0): # check if negative z coords (indicating that Z axis was flip to get LH coord system)
+            print('flipping z axis...')
+            coords[:, 2] = -coords[:, 2]# flip back to positive z before getting indices
+        
+        img = sitk.ReadImage(f_im) # Read image
 
-    idx = coords_to_indices(coords,img.GetSpacing()) # Get indices (ZYX) float values
+        idx = coords_to_indices(coords,img.GetSpacing()) # Get indices (ZYX) float values
 
-    np.savez_compressed(os.path.join(output_directory,'grown_idx.npz'), indices=idx, spacing=img.GetSpacing()) # Save grown_nearest_idx.npz (for transform application)
+        np.savez_compressed(os.path.join(output_directory,'grown_idx.npz'), indices=idx, spacing=img.GetSpacing()) # Save grown_nearest_idx.npz (for transform application)
 
 if __name__ == "__main__":
     main()
