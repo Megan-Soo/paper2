@@ -518,23 +518,23 @@ def main():
     mask_lobe = sitk.ReadImage(args.mask_lobe)
     mask_vessels = sitk.ReadImage(args.mask_vessels)
     image = sitk.ReadImage(args.img) # Read raw image
-    step2a = np.flip(np.transpose(sitk.GetArrayFromImage(sitk.Mask(image,mask_lung_muscle)),(2,1,0)),2)
+    # step2a = np.flip(np.transpose(sitk.GetArrayFromImage(sitk.Mask(image,mask_lung_muscle)),(2,1,0)),2)
     if save=='y':
         image = apply_median_filter(image, out=os.path.join(output_dir,'med_filtered.nii.gz')) # Apply median filter
     else:
         image = apply_median_filter(image)
     spacing = mask_lobe.GetSpacing()
-    step2b = np.flip(np.transpose(sitk.GetArrayFromImage(sitk.Mask(image,mask_lung_muscle)),(2,1,0)),2)
+    # step2b = np.flip(np.transpose(sitk.GetArrayFromImage(sitk.Mask(image,mask_lung_muscle)),(2,1,0)),2)
 
     step1a = np.flip(np.transpose(sitk.GetArrayFromImage(mask_lobe),(2,1,0)),2)
     # Erode lobe-by-lobe
     mask_lobe = binary_erosion_selected(mask_lobe,[1,2,3,5,6],args.erode)
-    step1b = np.flip(np.transpose(sitk.GetArrayFromImage(mask_lobe),(2,1,0)),2)
+    # step1b = np.flip(np.transpose(sitk.GetArrayFromImage(mask_lobe),(2,1,0)),2)
 
     # Remove vessels afer eroding lobes
     inv_vessels = 1-sitk.BinaryThreshold(mask_vessels,lowerThreshold=1,upperThreshold=1000) # invert mask
     mask_lobe = sitk.Mask(mask_lobe,inv_vessels,outsideValue=0) # mask out vessels. this binarises the lobbe labels tho.
-    step1c = np.flip(np.transpose(sitk.GetArrayFromImage(mask_lobe),(2,1,0)),2)
+    # step1c = np.flip(np.transpose(sitk.GetArrayFromImage(mask_lobe),(2,1,0)),2)
 
     # === MRI-quantified tissue density
     arr_lung_muscle = np.where(sitk.GetArrayFromImage(mask_lung_muscle)==4,4,sitk.GetArrayFromImage(mask_lobe)) # consider densities in "core" physiological region
@@ -548,7 +548,7 @@ def main():
         output_path = os.path.join(output_dir,'density_mask.nii.gz') # Export densities image
         sitk.WriteImage(img_densities,output_path)
         print(f" Saved density mask to {output_path}")
-    step3 = np.flip(np.transpose(arr_densities,(2,1,0)),2)
+    # step3 = np.flip(np.transpose(arr_densities,(2,1,0)),2)
 
     # Estimate mean lung density
     arr_densities = np.where(arr_lung_muscle == 4, 0, arr_densities) # remove muscle density values
@@ -567,19 +567,19 @@ def main():
     arr_bin_label = label_bins(arr_densities, bin_edges) # Assign unique labels to bins
     if save=='y':
         export_arr_to_img(arr_bin_label,os.path.join(output_dir, 'density_bins.nii.gz')) # Export bin labels mask
-    step4 = np.flip(np.transpose(arr_bin_label,(2,1,0)),2)
+    # step4 = np.flip(np.transpose(arr_bin_label,(2,1,0)),2)
 
     # Sample tissue units per region based on median density
     indices_all, coords_all, vols_unscaled_all = seed_lungs(bin_medians, arr_bin_label, spacing) # Submodule to distribute target tissue units across bins then derive coordinates and relative volumes
     print(f" Total number of points in both lungs: {len(coords_all)}")
-    step5_1a = np.asarray(coords_all)
+    # step5_1a = np.asarray(coords_all)
 
     parenchyma = sitk.Mask(mask_lung_muscle, inv_vessels) # remove vessels
     arr_parenchyma = np.where(sitk.GetArrayFromImage(parenchyma)!=4,sitk.GetArrayFromImage(parenchyma),1) # remove muscle voxels
     frc_vol = np.count_nonzero(arr_parenchyma) * np.prod(spacing) # FRC lung volume from (un-eroded) lung mask w/o vessels
     vols_scaled_frc = scale_vols(vols_unscaled_all, val_total=frc_vol) # Scale unit vols to sum to FRC lung volume. Large init vol range, large deviation from MoColoR esp anterior to hilum.
     print(f" Total volume of generated tissue units (scaled to FRC): {sum(vols_scaled_frc)/10**6:.2f} L") # Check total volume of generated units against FRC lung volume
-    step5_1b = np.asarray(vols_scaled_frc)
+    # step5_1b = np.asarray(vols_scaled_frc)
 
     assert len(coords_all) == len(vols_scaled_frc) == len(indices_all), "Length of coords, vols, and indices must be the same."
     if save=='y':
@@ -640,44 +640,44 @@ def main():
     ps.set_ground_plane_mode("none")
     ps.set_navigation_style("free")
     ps.set_background_color([0, 0, 0])
-    # ps.show()
+    ps.show()
 
-    steps = {"1a. Labelled lobes mask": "Output of vessel_to_lobe.py",
-             f"1b. Erode lobes mask by kernel radius {args.erode}": f"Leaving behind the 'core' region where conducting airways are likely to occupy.",
-             "1c. Remove vessels from lobes mask":"Retain lung parenchyma voxels for calculating normalised lung tissue density.",
-             "2a. Raw lung MRI": "",
-             "2b. Median-filtered lung MRI": "Apply a median filter with radius 2. [med_filtered.nii.gz].",
-             "3. Normalised tissue density":"Median-filtered lung parenchyma signals normalised against the average chest wall muscle signal \
-                 & corrected for lung & muscle decay times at 3T. [density_mask.nii.gz, density_histogram.png].",
-             "4. Density bins":"Divide the density range into 10 bins and assign labels to the respective regions. [density_bins.nii.gz]",
-             "5. Generate acini tissue units":"Median density values are used to obtain the relative spatial distribution of acini and their relative volumes.\
-                 Linearly scale the acini volumes so that their total sums to the volume of lung parenchyma voxels. [tissue_units.npz]",
-             "6. Assign acini to lobes":"For each lobe, export [.ipdata] for grow_lobes.py & save acini volumes in [.exdata]."
-            }
+    # steps = {"1a. Labelled lobes mask": "Output of vessel_to_lobe.py",
+    #          f"1b. Erode lobes mask by kernel radius {args.erode}": f"Leaving behind the 'core' region where conducting airways are likely to occupy.",
+    #          "1c. Remove vessels from lobes mask":"Retain lung parenchyma voxels for calculating normalised lung tissue density.",
+    #          "2a. Raw lung MRI": "",
+    #          "2b. Median-filtered lung MRI": "Apply a median filter with radius 2. [med_filtered.nii.gz].",
+    #          "3. Normalised tissue density":"Median-filtered lung parenchyma signals normalised against the average chest wall muscle signal \
+    #              & corrected for lung & muscle decay times at 3T. [density_mask.nii.gz, density_histogram.png].",
+    #          "4. Density bins":"Divide the density range into 10 bins and assign labels to the respective regions. [density_bins.nii.gz]",
+    #          "5. Generate acini tissue units":"Median density values are used to obtain the relative spatial distribution of acini and their relative volumes.\
+    #              Linearly scale the acini volumes so that their total sums to the volume of lung parenchyma voxels. [tissue_units.npz]",
+    #          "6. Assign acini to lobes":"For each lobe, export [.ipdata] for grow_lobes.py & save acini volumes in [.exdata]."
+    #         }
 
-    np.savez_compressed('visualise_pipeline/generate_tissue_units_001.npz',
-                        steps=steps,
-                        step1a=step1a,
-                        step1b=step1b,
-                        step1c=step1c,
-                        step2a=step2a,
-                        step2b=step2b,
-                        step3=step3,
-                        step4=step4,
-                        step5_1a=step5_1a,
-                        step5_1b=step5_1b,
-                        step6_1a=step6_1a,
-                        step6_1b=step6_1b,
-                        step6_2a=step6_2a,
-                        step6_2b=step6_2b,
-                        step6_3a=step6_3a,
-                        step6_3b=step6_3b,
-                        step6_4a=step6_4a,
-                        step6_4b=step6_4b,
-                        step6_5a=step6_5a,
-                        step6_5b=step6_5b,
-                        spacing=spacing
-                        )
+    # np.savez_compressed('visualise_pipeline/generate_tissue_units_001.npz',
+    #                     steps=steps,
+    #                     step1a=step1a,
+    #                     step1b=step1b,
+    #                     step1c=step1c,
+    #                     step2a=step2a,
+    #                     step2b=step2b,
+    #                     step3=step3,
+    #                     step4=step4,
+    #                     step5_1a=step5_1a,
+    #                     step5_1b=step5_1b,
+    #                     step6_1a=step6_1a,
+    #                     step6_1b=step6_1b,
+    #                     step6_2a=step6_2a,
+    #                     step6_2b=step6_2b,
+    #                     step6_3a=step6_3a,
+    #                     step6_3b=step6_3b,
+    #                     step6_4a=step6_4a,
+    #                     step6_4b=step6_4b,
+    #                     step6_5a=step6_5a,
+    #                     step6_5b=step6_5b,
+    #                     spacing=spacing
+    #                     )
 
 if __name__ == "__main__":
     main()
