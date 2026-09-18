@@ -62,7 +62,8 @@ def callback():
             grid.add_scalar_quantity("vals",arr[arr!=0],defined_on='cells',enabled=True)
 
         else:
-            print('invalid step')
+            curr_frame=1
+            update_frame_data = True
             pass
                                                                         
 ps.init()
