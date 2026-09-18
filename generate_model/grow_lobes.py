@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import os,re,argparse
+import os,re,argparse,tempfile,contextlib
 import numpy as np
 import SimpleITK as sitk
 from aether.diagnostics import set_diagnostics_on
-from aether.geometry import define_data_geometry, define_rad_from_geom, import_ply_triangles, define_node_geometry, define_1d_elements, define_rad_from_file, list_tree_statistics
+from aether.geometry import define_data_geometry, define_rad_from_geom, define_node_geometry, define_1d_elements, define_rad_from_file, list_tree_statistics
 from aether.growtree import grow_tree, smooth_1d_tree
 from aether.exports import export_1d_elem_field, export_node_geometry, export_1d_elem_geometry
 from aether.indices import define_problem_type, get_ne_radius
@@ -266,7 +266,7 @@ def read_ipnode(file_path):
         node = [x,y,z]
         coords.append(node)  # append node coordinates
 
-    return coords # return list of coords
+    return np.array(coords) # return list of coords
 
 def coords_to_indices(coords_xyz, spacing):
     """
@@ -298,117 +298,251 @@ def coords_to_indices(coords_xyz, spacing):
 def main():
     parser = argparse.ArgumentParser(description="Grow tree and assign initial volume to terminal nodes. Generate.npz w/ nearest idx and spacing")
     parser.add_argument("-subject_dir", type=str, required=True, help="Assuming dir contains all required files (ipnode,ipelem,ipfiel,ipdata).")
-    parser.add_argument("-outdir", type=str, required=True, help="DIR to save the grown files")
+    parser.add_argument("-outdir", type=str, required=False, help="DIR to save the grown files")
     parser.add_argument("-ref_img", type=str, required=False, help="Filepath to image volume to get spacing for .npz storing indices for mapping transforms.")
     args = parser.parse_args()
 
     f_im = args.ref_img
-    output_directory = args.outdir
-    os.makedirs(output_directory, exist_ok=True)
+    subject_dir = args.subject_dir
+    output_dir = args.outdir
 
-    set_diagnostics_on(False)
-    define_problem_type('grow_tree')
-    define_node_geometry(os.path.join(output_directory, 'upper_airway'))
-    define_1d_elements(os.path.join(output_directory, 'upper_airway'))
-    define_rad_from_file(os.path.join(output_directory, 'upper_airway'))
+    # If temp, use TemporaryDirectory(). If permanent, use nullcontext() which does nothing.
+    is_temp = output_dir is None
+    ctx = tempfile.TemporaryDirectory() if is_temp else contextlib.nullcontext()
 
-    lobes = ['RUL','RML','RLL','LUL','LLL']
-    for (lobe,parent) in zip(lobes,[10,12,13,8,9]):
-        define_data_geometry(os.path.join(output_directory,f'{lobe}.ipdata'))
-        grow_tree([0],parent,0,60.0,20.0,0.4,1.0,1.2,180.0,True,f'{output_directory}/{lobe}_mapping','close')
-    smooth_1d_tree(14,1.0) # smooth branches tt aren't image-derived. don't affect image-derived branches.
+    with ctx as temp_path:
+        # Establish a single target directory path
+        if is_temp:
+            output_dir = os.path.abspath(temp_path)
+            print(f"Writing to temp folder: {output_dir}")
+        else:
+            output_dir = os.path.abspath(output_dir)
+            os.makedirs(output_dir, exist_ok=True)
+            print(f"Writing to output directory: {output_dir}")
 
-    # Replace upper airway node positions with MRI-derived coordinates
-    define_node_geometry(os.path.join(output_directory, 'upper_airway')) # safety feature, prolly unnecessary w/ proper smooth_1d_tree param
+        subject = os.path.basename(subject_dir)
+        print(f"Subject {subject}")
 
-    order_system = 'fit'  # fit the radii between read-in values and min_rad at order 1
-    start_at = 'inlet'    # required, but previous option should make obsolete?
-    min_rad = 0.20#0.20         # radius of order 1 branches
-    h_ratio = 0.0         # doesn't matter for the 'fit' option
-    define_rad_from_geom(order_system, h_ratio, start_at, min_rad)
+        set_diagnostics_on(False)
+        define_problem_type('grow_tree')
+        define_node_geometry(os.path.join(subject_dir, 'upper_airway'))
+        define_1d_elements(os.path.join(subject_dir, 'upper_airway'))
+        define_rad_from_file(os.path.join(subject_dir, 'upper_airway'))
 
-    filename = 'grown'
-    group_name = '1d_tree'
-    ne_radius = get_ne_radius()
-    field_name = 'radius'
-    export_1d_elem_field(ne_radius, os.path.join(output_directory, filename+'_radius'), group_name, field_name) # generate grown_radius.exelem
-    ex2ipfiel(output_directory,filename+'_radius') # generate grown_radius.ipelem
-    export_node_geometry(os.path.join(output_directory, filename), group_name) # generate grown.exnode
-    ex2ipnode(output_directory,filename) # generate grown.ipnode
-    export_1d_elem_geometry(os.path.join(output_directory, filename), group_name) # generate grown.exelem
-    ex2ipelem(output_directory,filename) # generate grown.ipelem
-    list_tree_statistics(os.path.join(output_directory,filename))
+        lobes = ['RUL','RML','RLL','LUL','LLL']
+        for (lobe,parent) in zip(lobes,[10,12,13,8,9]):
+            define_data_geometry(os.path.join(subject_dir,f'{lobe}.ipdata'))
+            grow_tree([0],parent,0,60.0,20.0,0.4,1.0,1.2,180.0,True,os.path.join(output_dir,f'{lobe}_mapping'),'close')
+            smooth_1d_tree(14,1.0) # smooth branches tt aren't image-derived. don't affect image-derived branches.
 
-    # Map terminal units to their volumes
-    paths_exdata = {f for f in os.listdir(output_directory) if f.lower().endswith('.exdata')
-                and any(compartment.lower() in f.lower() for compartment in lobes)
+        order_system = 'fit'  # fit the radii between read-in values and min_rad at order 1
+        start_at = 'inlet'    # required, but previous option should make obsolete?
+        min_rad = 0.20         # radius of order 1 branches
+        h_ratio = 0.0         # doesn't matter for the 'fit' option
+        define_rad_from_geom(order_system, h_ratio, start_at, min_rad)
+
+        filename = 'grown'
+        group_name = '1d_tree'
+        ne_radius = get_ne_radius()
+        field_name = 'radius'
+        export_1d_elem_field(ne_radius, os.path.join(output_dir, filename+'_radius'), group_name, field_name) # generate grown_radius.exelem
+        ex2ipfiel(output_dir,filename+'_radius') # generate grown_radius.ipelem
+        export_node_geometry(os.path.join(output_dir, filename), group_name) # generate grown.exnode
+        ex2ipnode(output_dir,filename) # generate grown.ipnode
+        export_1d_elem_geometry(os.path.join(output_dir, filename), group_name) # generate grown.exelem
+        ex2ipelem(output_dir,filename) # generate grown.ipelem
+        list_tree_statistics(os.path.join(output_dir,filename))
+
+        # Map terminal units to their volumes
+        paths_exdata = {f for f in os.listdir(subject_dir) if f.lower().endswith('.exdata')
+                    and any(compartment.lower() in f.lower() for compartment in lobes)
+                    }
+
+        paths_mapping = {f for f in os.listdir(output_dir) if f.lower().endswith('.txt')
+                        and any(compartment.lower() in f.lower() for compartment in lobes)
+                        and 'mapping' in f.lower()}    
+
+        if not paths_exdata:
+            print(f'No .exdata found.')
+            exit()
+        elif not paths_mapping:
+            print(f'No mapping txt found.')
+            exit()
+
+        exdata_dict = {compartment: next((f for f in paths_exdata if compartment.lower() in f.lower()), None)
+                        for compartment in lobes}
+        mapping_dict = {compartment: next((f for f in paths_mapping if compartment.lower() in f.lower()), None)
+                        for compartment in lobes}
+
+        init_vol_all = []
+        term_elem_num_all = []
+        coords_all = []
+        term_node_num_all = []
+        for compartment in lobes:
+            path_exdata = os.path.join(subject_dir, exdata_dict.get(compartment))
+            dict_exdata = read_exnodedata(path_exdata,extn='.exdata')
+            init_vol = dict_exdata[('init vol',1)]
+
+            # accumulate initial volumes of processed compartments
+            init_vol_all = init_vol_all + init_vol
+            coords_all = coords_all + dict_exdata[('coordinates',3)]
+
+            # read {compartment}_mapping.txt
+            path_mapping = os.path.join(output_dir, mapping_dict.get(compartment))
+            mapping_list_2d = read_mapping_txt(path_mapping)
+            # returns 2d list: [[datapoint no. (index of init_vol), Terminal element no., terminal unit no. (grown node number)]]
+            
+            # Sort the 2D list by the first column (datapoint col ie index of init_vol)
+            sorted_data = sorted(mapping_list_2d, key=lambda x: x[0])
+
+            # map terminal unit's correct elem number to its initial volume
+            term_elem_num_all = term_elem_num_all + [row[1] for row in sorted_data]
+            term_node_num_all = term_node_num_all + [row[2] for row in sorted_data]
+
+        assert len(term_elem_num_all)==len(init_vol_all); "amount of Elem numbers and Initial volumes don't match"
+
+        # Accumulate the 2d list like [[elem num1, init vol1],[elem num2, init vol2]]
+        new_list = [[num,vol] for num,vol in zip(term_elem_num_all,init_vol_all)]
+
+        # Sort the list by the first column (element number) in ascending order
+        new_list = sorted(new_list, key=lambda x: x[0])
+
+        # check total volume of terminal units
+        total_volume = sum(init_vol_all)
+        print(f"Total volume of terminal units: {total_volume/10**6:.2f} L")
+
+        # write out new ipfiel file. to read into fortran w/ define_init_vol
+        array2ipfiel_custom_number(output_dir,f'init_vol',new_list)
+
+        if f_im:
+            # ----------- Find nearest indices and save in .npz ------------
+            coords = read_ipnode(os.path.join(output_dir,filename)) # Read grown.ipnode
+
+            coords2=coords # make a copy
+            if np.any(coords[:,2] < 0): # check if negative z coords (indicating that Z axis was flip to get LH coord system)
+                print('flipping z axis...')
+                coords2[:, 2] = -coords[:, 2]# flip back to positive z before getting indices
+            
+            img = sitk.ReadImage(f_im) # Read image
+
+            idx = coords_to_indices(coords2,img.GetSpacing()) # Get indices (ZYX) float values
+
+            np.savez_compressed(os.path.join(output_dir,'grown_idx.npz'), indices=idx, spacing=img.GetSpacing()) # Save grown_nearest_idx.npz (for transform application)
+
+        # region: code for visualise_pipeline
+        def extract_global_numbers(file_path):
+            global_numbers = []
+            
+            with open(file_path, 'r') as file:
+                lines = file.readlines()
+            
+            i = 0
+            while i < len(lines):
+                line = lines[i].strip()
+                if line.startswith("Element number"):
+                    while not lines[i].strip().startswith("Enter the 2 global numbers"):
+                        i += 1
+                    numbers = list(map(lambda x: int(x), lines[i].split(":")[-1].strip().split()))
+                    global_numbers.append(numbers)
+                i += 1
+            
+            return np.array(global_numbers)
+
+        def extract_radius(file_path):
+            radius_values = []
+            pattern = re.compile(r'The field variable value is \[ .*?\]: ([\d\.D\+\-]+)')
+            
+            with open(file_path, 'r') as file:
+                for line in file:
+                    match = pattern.search(line)
+                    if match:
+                        value = match.group(1).replace('D', 'E')  # Convert Fortran-style exponent
+                        radius_values.append(float(value))
+            
+            return np.array(radius_values)
+
+        def compute_joint_radii(nodes, edges, edge_mid_radii):
+            """
+            Given a radius for each edge (at midpoint), compute per-node radius
+            as the average of connected edge radii. If a node has only one incident
+            edge, use that edge's radius directly.
+            
+            Parameters
+            ----------
+            nodes : (N,3)
+            edges : (E,2)
+            edge_mid_radii : (E,)
+            
+            Returns
+            -------
+            joint_radii : (N,) per-node radii
+            edge_radii : (E,2) per-edge start/end radii
+            """
+            from collections import defaultdict
+            
+            N = nodes.shape[0]
+            E = edges.shape[0]
+
+            # collect radii per node
+            incident = defaultdict(list)
+            for e, (i0, i1) in enumerate(edges):
+                incident[i0].append(edge_mid_radii[e])
+                incident[i1].append(edge_mid_radii[e])
+
+            joint_radii = np.zeros(N, dtype=float)
+            for i in range(N):
+                if len(incident[i]) == 0:
+                    joint_radii[i] = 0.0
+                elif len(incident[i]) == 1:
+                    # leaf: just use that edge's radius
+                    joint_radii[i] = incident[i][0]
+                else:
+                    # average of all connected edge radii
+                    joint_radii[i] = np.mean(incident[i])
+
+            # now expand to per-edge start/end
+            edge_radii = np.zeros((E, 2), dtype=float)
+            for e, (i0, i1) in enumerate(edges):
+                edge_radii[e, 0] = joint_radii[i0]
+                edge_radii[e, 1] = joint_radii[i1]
+
+            return joint_radii, edge_radii
+
+        coords_upp = read_ipnode(os.path.join(subject_dir,'upper_airway.ipnode'))
+        edges_upp = extract_global_numbers(os.path.join(subject_dir,'upper_airway.ipelem'))
+        radius_upp = extract_radius(os.path.join(subject_dir,'upper_airway.ipfiel'))
+        # fill in zero values for unassigned elements
+        radius_upp = np.pad(radius_upp,(0,len(edges_upp)-len(radius_upp)))
+        edges_upp=edges_upp-1
+
+        coords = read_ipnode(os.path.join(output_dir,'grown.ipnode')) # Read grown.ipnode
+        edges = extract_global_numbers(os.path.join(output_dir,'grown.ipelem'))
+        radius = extract_radius(os.path.join(output_dir,'grown_radius.ipfiel'))
+        edges = edges-1
+        radius, _ = compute_joint_radii(coords, edges, radius)
+        node_indices = np.array(term_node_num_all) -1 # switch to zero-indexing
+        coords_terminal = coords[node_indices,:]
+        
+        steps= {"1. Upper airway centreline":"From get_centreline.py",
+                "2. Grown tree":"Grown from upper_airway centreline.",
+                "3. Acini units":"Spatial and volume distribution derived from generate_tissue_units.py. \
+                    Note that the tree's terminal branches don't map exactly to the generated acini units.",
+                "4. Final airway model":"Map volume distribution from generate_tissue_units.py to terminal branches."
                 }
 
-    paths_mapping = {f for f in os.listdir(output_directory) if f.lower().endswith('.txt')
-                    and any(compartment.lower() in f.lower() for compartment in lobes)
-                    and 'mapping' in f.lower()}    
-
-    if not paths_exdata:
-        print(f'No .exdata found.')
-        exit()
-    elif not paths_mapping:
-        print(f'No mapping txt found.')
-        exit()
-
-    exdata_dict = {compartment: next((f for f in paths_exdata if compartment.lower() in f.lower()), None)
-                    for compartment in lobes}
-    mapping_dict = {compartment: next((f for f in paths_mapping if compartment.lower() in f.lower()), None)
-                    for compartment in lobes}
-
-    init_vol_all = []
-    term_elem_num_all = []
-    for compartment in lobes:
-        path_exdata = os.path.join(output_directory, exdata_dict.get(compartment))
-        dict_exdata = read_exnodedata(path_exdata,extn='.exdata')
-        init_vol = dict_exdata[('init vol',1)]
-
-        # accumulate initial volumes of processed compartments
-        init_vol_all = init_vol_all + init_vol
-
-        # read {compartment}_mapping.txt
-        path_mapping = os.path.join(output_directory, mapping_dict.get(compartment))
-        mapping_list_2d = read_mapping_txt(path_mapping)
-        # returns 2d list: [[datapoint no. (index of init_vol), Terminal element no., terminal unit no. (grown node number)]]
-        
-        # Sort the 2D list by the first column (datapoint col ie index of init_vol)
-        sorted_data = sorted(mapping_list_2d, key=lambda x: x[0])
-
-        # map terminal unit's correct elem number to its initial volume
-        term_elem_num_all = term_elem_num_all + [row[1] for row in sorted_data]
-
-    assert len(term_elem_num_all)==len(init_vol_all); "amount of Elem numbers and Initial volumes don't match"
-
-    # Accumulate the 2d list like [[elem num1, init vol1],[elem num2, init vol2]]
-    new_list = [[num,vol] for num,vol in zip(term_elem_num_all,init_vol_all)]
-
-    # Sort the list by the first column (element number) in ascending order
-    new_list = sorted(new_list, key=lambda x: x[0])
-
-    # write out new ipfiel file. to read into fortran w/ define_init_vol
-    array2ipfiel_custom_number(output_directory,f'init_vol',new_list)
-
-    # check total volume of terminal units
-    total_volume = sum(init_vol_all)
-    print(f"Total volume of terminal units: {total_volume/10**6:.2f} L")
-
-    if f_im:
-        # ----------- Find nearest indices and save in .npz ------------
-        coords = np.array(read_ipnode(os.path.join(output_directory,filename))) # Read grown.ipnode
-        
-        if np.any(coords[:,2] < 0): # check if negative z coords (indicating that Z axis was flip to get LH coord system)
-            print('flipping z axis...')
-            coords[:, 2] = -coords[:, 2]# flip back to positive z before getting indices
-        
-        img = sitk.ReadImage(f_im) # Read image
-
-        idx = coords_to_indices(coords,img.GetSpacing()) # Get indices (ZYX) float values
-
-        np.savez_compressed(os.path.join(output_directory,'grown_idx.npz'), indices=idx, spacing=img.GetSpacing()) # Save grown_nearest_idx.npz (for transform application)
+        np.savez_compressed('visualise_pipeline/grow_lobes_001.npz',
+                            steps=steps,
+                            step1_1a=coords_upp,
+                            step1_1b=edges_upp,
+                            step1_1c=radius_upp,
+                            step2_1a=coords,
+                            step2_1b=edges,
+                            step2_1c=radius,
+                            step3=coords_all,
+                            step4_1a=coords_terminal,
+                            step4_1b=init_vol_all,
+                            )
+        # endregion
 
 if __name__ == "__main__":
     main()
