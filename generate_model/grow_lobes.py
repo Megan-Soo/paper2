@@ -430,118 +430,118 @@ def main():
             np.savez_compressed(os.path.join(output_dir,'grown_idx.npz'), indices=idx, spacing=img.GetSpacing()) # Save grown_nearest_idx.npz (for transform application)
 
         # region: code for visualise_pipeline
-        def extract_global_numbers(file_path):
-            global_numbers = []
+        # def extract_global_numbers(file_path):
+        #     global_numbers = []
             
-            with open(file_path, 'r') as file:
-                lines = file.readlines()
+        #     with open(file_path, 'r') as file:
+        #         lines = file.readlines()
             
-            i = 0
-            while i < len(lines):
-                line = lines[i].strip()
-                if line.startswith("Element number"):
-                    while not lines[i].strip().startswith("Enter the 2 global numbers"):
-                        i += 1
-                    numbers = list(map(lambda x: int(x), lines[i].split(":")[-1].strip().split()))
-                    global_numbers.append(numbers)
-                i += 1
+        #     i = 0
+        #     while i < len(lines):
+        #         line = lines[i].strip()
+        #         if line.startswith("Element number"):
+        #             while not lines[i].strip().startswith("Enter the 2 global numbers"):
+        #                 i += 1
+        #             numbers = list(map(lambda x: int(x), lines[i].split(":")[-1].strip().split()))
+        #             global_numbers.append(numbers)
+        #         i += 1
             
-            return np.array(global_numbers)
+        #     return np.array(global_numbers)
 
-        def extract_radius(file_path):
-            radius_values = []
-            pattern = re.compile(r'The field variable value is \[ .*?\]: ([\d\.D\+\-]+)')
+        # def extract_radius(file_path):
+        #     radius_values = []
+        #     pattern = re.compile(r'The field variable value is \[ .*?\]: ([\d\.D\+\-]+)')
             
-            with open(file_path, 'r') as file:
-                for line in file:
-                    match = pattern.search(line)
-                    if match:
-                        value = match.group(1).replace('D', 'E')  # Convert Fortran-style exponent
-                        radius_values.append(float(value))
+        #     with open(file_path, 'r') as file:
+        #         for line in file:
+        #             match = pattern.search(line)
+        #             if match:
+        #                 value = match.group(1).replace('D', 'E')  # Convert Fortran-style exponent
+        #                 radius_values.append(float(value))
             
-            return np.array(radius_values)
+        #     return np.array(radius_values)
 
-        def compute_joint_radii(nodes, edges, edge_mid_radii):
-            """
-            Given a radius for each edge (at midpoint), compute per-node radius
-            as the average of connected edge radii. If a node has only one incident
-            edge, use that edge's radius directly.
+        # def compute_joint_radii(nodes, edges, edge_mid_radii):
+        #     """
+        #     Given a radius for each edge (at midpoint), compute per-node radius
+        #     as the average of connected edge radii. If a node has only one incident
+        #     edge, use that edge's radius directly.
             
-            Parameters
-            ----------
-            nodes : (N,3)
-            edges : (E,2)
-            edge_mid_radii : (E,)
+        #     Parameters
+        #     ----------
+        #     nodes : (N,3)
+        #     edges : (E,2)
+        #     edge_mid_radii : (E,)
             
-            Returns
-            -------
-            joint_radii : (N,) per-node radii
-            edge_radii : (E,2) per-edge start/end radii
-            """
-            from collections import defaultdict
+        #     Returns
+        #     -------
+        #     joint_radii : (N,) per-node radii
+        #     edge_radii : (E,2) per-edge start/end radii
+        #     """
+        #     from collections import defaultdict
             
-            N = nodes.shape[0]
-            E = edges.shape[0]
+        #     N = nodes.shape[0]
+        #     E = edges.shape[0]
 
-            # collect radii per node
-            incident = defaultdict(list)
-            for e, (i0, i1) in enumerate(edges):
-                incident[i0].append(edge_mid_radii[e])
-                incident[i1].append(edge_mid_radii[e])
+        #     # collect radii per node
+        #     incident = defaultdict(list)
+        #     for e, (i0, i1) in enumerate(edges):
+        #         incident[i0].append(edge_mid_radii[e])
+        #         incident[i1].append(edge_mid_radii[e])
 
-            joint_radii = np.zeros(N, dtype=float)
-            for i in range(N):
-                if len(incident[i]) == 0:
-                    joint_radii[i] = 0.0
-                elif len(incident[i]) == 1:
-                    # leaf: just use that edge's radius
-                    joint_radii[i] = incident[i][0]
-                else:
-                    # average of all connected edge radii
-                    joint_radii[i] = np.mean(incident[i])
+        #     joint_radii = np.zeros(N, dtype=float)
+        #     for i in range(N):
+        #         if len(incident[i]) == 0:
+        #             joint_radii[i] = 0.0
+        #         elif len(incident[i]) == 1:
+        #             # leaf: just use that edge's radius
+        #             joint_radii[i] = incident[i][0]
+        #         else:
+        #             # average of all connected edge radii
+        #             joint_radii[i] = np.mean(incident[i])
 
-            # now expand to per-edge start/end
-            edge_radii = np.zeros((E, 2), dtype=float)
-            for e, (i0, i1) in enumerate(edges):
-                edge_radii[e, 0] = joint_radii[i0]
-                edge_radii[e, 1] = joint_radii[i1]
+        #     # now expand to per-edge start/end
+        #     edge_radii = np.zeros((E, 2), dtype=float)
+        #     for e, (i0, i1) in enumerate(edges):
+        #         edge_radii[e, 0] = joint_radii[i0]
+        #         edge_radii[e, 1] = joint_radii[i1]
 
-            return joint_radii, edge_radii
+        #     return joint_radii, edge_radii
 
-        coords_upp = read_ipnode(os.path.join(subject_dir,'upper_airway.ipnode'))
-        edges_upp = extract_global_numbers(os.path.join(subject_dir,'upper_airway.ipelem'))
-        radius_upp = extract_radius(os.path.join(subject_dir,'upper_airway.ipfiel'))
-        # fill in zero values for unassigned elements
-        radius_upp = np.pad(radius_upp,(0,len(edges_upp)-len(radius_upp)))
-        edges_upp=edges_upp-1
+        # coords_upp = read_ipnode(os.path.join(subject_dir,'upper_airway.ipnode'))
+        # edges_upp = extract_global_numbers(os.path.join(subject_dir,'upper_airway.ipelem'))
+        # radius_upp = extract_radius(os.path.join(subject_dir,'upper_airway.ipfiel'))
+        # # fill in zero values for unassigned elements
+        # radius_upp = np.pad(radius_upp,(0,len(edges_upp)-len(radius_upp)))
+        # edges_upp=edges_upp-1
 
-        coords = read_ipnode(os.path.join(output_dir,'grown.ipnode')) # Read grown.ipnode
-        edges = extract_global_numbers(os.path.join(output_dir,'grown.ipelem'))
-        radius = extract_radius(os.path.join(output_dir,'grown_radius.ipfiel'))
-        edges = edges-1
-        radius, _ = compute_joint_radii(coords, edges, radius)
-        node_indices = np.array(term_node_num_all) -1 # switch to zero-indexing
-        coords_terminal = coords[node_indices,:]
+        # coords = read_ipnode(os.path.join(output_dir,'grown.ipnode')) # Read grown.ipnode
+        # edges = extract_global_numbers(os.path.join(output_dir,'grown.ipelem'))
+        # radius = extract_radius(os.path.join(output_dir,'grown_radius.ipfiel'))
+        # edges = edges-1
+        # radius, _ = compute_joint_radii(coords, edges, radius)
+        # node_indices = np.array(term_node_num_all) -1 # switch to zero-indexing
+        # coords_terminal = coords[node_indices,:]
         
-        steps= {"1. Upper airway centreline":"From get_centreline.py",
-                "2. Grown tree":"Grown from upper_airway centreline.",
-                "3. Acini units":"Spatial and volume distribution derived from generate_tissue_units.py. \
-                    Note that the tree's terminal branches don't map exactly to the generated acini units.",
-                "4. Final airway model":"Map volume distribution from generate_tissue_units.py to terminal branches."
-                }
+        # steps= {"1. Upper airway centreline":"From get_centreline.py",
+        #         "2. Grown tree":"Grown from upper_airway centreline.",
+        #         "3. Acini units":"Spatial and volume distribution derived from generate_tissue_units.py. \
+        #             Note that the tree's terminal branches don't map exactly to the generated acini units.",
+        #         "4. Final airway model":"Map volume distribution from generate_tissue_units.py to terminal branches."
+        #         }
 
-        np.savez_compressed('visualise_pipeline/grow_lobes_001.npz',
-                            steps=steps,
-                            step1_1a=coords_upp,
-                            step1_1b=edges_upp,
-                            step1_1c=radius_upp,
-                            step2_1a=coords,
-                            step2_1b=edges,
-                            step2_1c=radius,
-                            step3=coords_all,
-                            step4_1a=coords_terminal,
-                            step4_1b=init_vol_all,
-                            )
+        # np.savez_compressed('visualise_pipeline/grow_lobes_001.npz',
+        #                     steps=steps,
+        #                     step1_1a=coords_upp,
+        #                     step1_1b=edges_upp,
+        #                     step1_1c=radius_upp,
+        #                     step2_1a=coords,
+        #                     step2_1b=edges,
+        #                     step2_1c=radius,
+        #                     step3=coords_all,
+        #                     step4_1a=coords_terminal,
+        #                     step4_1b=init_vol_all,
+        #                     )
         # endregion
 
 if __name__ == "__main__":
