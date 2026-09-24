@@ -524,7 +524,7 @@ def main():
         # coords_terminal = coords[node_indices,:]
         
         # steps= {"1. Upper airway centreline":"From get_centreline.py",
-        #         "2. Grown tree":"Grown from upper_airway centreline.",
+        #         "2. Grown tree":"Grown from upper_airway.ipnode/elem/fiel",
         #         "3. Acini units":"Spatial and volume distribution derived from generate_tissue_units.py. \
         #             Note that the tree's terminal branches don't map exactly to the generated acini units.",
         #         "4. Final airway model":"Map volume distribution from generate_tissue_units.py to terminal branches."

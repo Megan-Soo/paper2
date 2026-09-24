@@ -197,5 +197,19 @@ def main():
             shutil.copy(os.path.join(output_directory, 'grown.exelem'), os.path.join(output_directory,'artery_full.exelem'))
             shutil.copy(os.path.join(output_directory, 'grown.ipelem'), os.path.join(output_directory,'artery_full.ipelem'))
 
+    # region: code for visualise_pipeline
+    steps = {
+        "1. See Example":"A 14-node template is fitted to the upper airway in MRI A.\
+            Five nodes outlining the intrathoracic trachea (shoulders -> carina),\
+            From the carina, two nodes extend to the left lung. \
+            From the carine, one node extends to the upper right lung, \
+            followed by another node extending down to the lower right lung. \
+            Finally, one secondary (lobar) bronchus extends into each of the 5 lobes.",
+        "2. Try it yourself":"Scroll through MRI B and click on a: 5 nodes (trachea); b: 2 nodes (into the left lung); \
+            c: 1 node + 1 node (into the upper & lower right lung); d) 5 terminal nodes (into each lobe)"
+        }
+    
+    # endregion
+
 if __name__ == "__main__":
     main()
