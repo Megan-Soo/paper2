@@ -813,11 +813,6 @@ def on_files_dropped(paths):
     if len(paths) > 1:
         status += f"  (ignored {len(paths) - 1} other dropped item(s))"
 
-
-# ==============================================================
-# Example setup
-# ==============================================================
-
 ps.init()
 
 ps.set_up_dir("z_up")
