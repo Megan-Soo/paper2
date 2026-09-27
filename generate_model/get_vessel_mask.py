@@ -3,14 +3,19 @@ import SimpleITK as sitk
 from skimage.morphology import ball, white_tophat
 from scipy import ndimage
 import numpy as np
-import os, argparse
+import os, argparse, time
 
 def apply_white_tophat(unfiltered: np.ndarray, mask:np.ndarray, filter_nbhood: int, thresh:int) -> np.ndarray:
     """
     Filtering determined by structural element.
     Finds bright spots and small details smaller than a structuring element by subtracting an image's morphological opening from the original image.
     """
-    enhanced = white_tophat(unfiltered, ball(filter_nbhood))
+    if len(unfiltered.shape)==2:
+        print('2D white tophat')
+        from skimage.morphology import disk
+        enhanced = white_tophat(unfiltered,disk(filter_nbhood))
+    else:
+        enhanced = white_tophat(unfiltered, ball(filter_nbhood))
     # --- threshold ---
     vals = enhanced[mask > 0]
     thresh = np.percentile(vals, thresh)
@@ -170,10 +175,12 @@ def main():
     mask_white_tophat = np.where(sitk.GetArrayFromImage(mask)>0,mask_white_tophat,0)
     mask_enhanced_mean = apply_enhanced_mean(sitk.GetArrayFromImage(image),sitk.GetArrayFromImage(mask),args.nbhood,args.thresh) # Apply enhanced mean filter
     mask_enhanced_mean = np.where(sitk.GetArrayFromImage(mask)>0,mask_enhanced_mean,0)
-    mask_vessel0 = mask_white_tophat + mask_enhanced_mean # Combine and binarise resulting masks
+    mask_vessel = mask_white_tophat + mask_enhanced_mean # Combine and binarise resulting masks
 
     # Complete the vessel feature using small kernel dilation
-    mask_vessel = propagate_labels(mask_vessel0, mask_vessel0)
+    # start=time.time()
+    # mask_vessel = propagate_labels(mask_vessel0, mask_vessel0)
+    # print(f"Propagating labels took {round(time.time()-start)} seconds")
     if np.count_nonzero(mask_vessel)==0:
         print(f"No vessel feature after propagation")
         exit()
