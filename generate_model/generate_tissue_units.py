@@ -501,7 +501,7 @@ def main():
     parser.add_argument("-tr", type=float, default=2.928, help="Repetition time TR in ms (default: 2.928 ms for UTE 3T Matai)")
     parser.add_argument("-te", type=float, default=0.060, help="Echo time TE in ms (default: 0.06 ms for UTE 3T Matai)")
     parser.add_argument("-bins", type=int, default=10, help="No. of regions to split tissue densities (default: 10)")
-    parser.add_argument("-erode", type=int, default=2, help="Radius to erode each lobe")
+    parser.add_argument("-erode", type=int, default=2, help="Radius to erode each lobe (default: 2)")
     parser.add_argument("-save",type=str,default='y',help='y/n to save files.')
     args = parser.parse_args()
 
