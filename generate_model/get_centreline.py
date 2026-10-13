@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, shutil, argparse
+import os, shutil, argparse, re
 import SimpleITK as sitk
 import centreline_gui
 import numpy as np
@@ -134,21 +134,23 @@ def main():
     parser = argparse.ArgumentParser(description="Run GUI to select upper airway and upper artery centreline points from 3D image.")
     parser.add_argument("-img", required=True, help="Path to image file (e.g. image.nii.gz)")
     parser.add_argument("-outdir", required=True, help="DIR to save the upper airway.ipnode/ipelem files.")
-    parser.add_argument("-get_upper_airway", type=str, default=1, help="Run GUI to select upper airway centreline points.")
-    parser.add_argument("-get_upper_artery", type=str, default=0, help="Run GUI to select upper artery centreline points. Select trunk, mid-trunk,trunk bif, LPA, RPA.")
+    parser.add_argument("--upper-airway", action='store_true', help="Run GUI to select upper airway centreline points.")
+    parser.add_argument("--upper-artery", action='store_true', help="Run GUI to select upper artery centreline points. Select trunk, mid-trunk,trunk bif, LPA, RPA.")
     parser.add_argument("-view", default='c', choices=['a', 's', 'c'], help="Initial view for GUI: axial, sagittal, coronal (default: coronal)")
     args = parser.parse_args()
 
+    img = args.img
+    gui_view = args.view
+    upper_airway = args.upper_airway
+    upper_artery = args.upper_artery
     output_directory = args.outdir
-    if not os.path.exists(output_directory):
-        os.makedirs(output_directory)
+    os.makedirs(output_directory,exist_ok=True)
 
     img_orientation = 'LPI'
     
-    image = sitk.ReadImage(args.img)
-    gui_view = args.view
+    image = sitk.ReadImage(img)
 
-    if args.get_upper_airway==1:
+    if upper_airway:
         upper_airway_centreline = centreline_gui.GetUpperAirway(image, img_orientation, gui_view).centreline
         filename = 'upper_airway'
         array2exnode(output_directory, filename, upper_airway_centreline)
@@ -157,7 +159,7 @@ def main():
             write_ipelem_file(os.path.join(output_directory,'upper_airway.ipelem')) # generate 14-node upper airway template ipelem file
         visualise_upper(upper_airway_centreline,image)
 
-    if args.get_upper_artery==1: # upper airway centreline is a prerequisite
+    if upper_artery: # upper airway centreline is a prerequisite
 
         print(' Searching for existing upper_airway ipnode...')
         try:
