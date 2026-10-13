@@ -16,7 +16,7 @@ def natural_key(s):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Read directory containing mask NifTis, export volumes in .npz")
     parser.add_argument("dir", type=str, help="Dir containing mask NiFTis")
-    parser.add_argument("--o", type=str, required=False, help="Path to save array of lung mask volumes.")
+    parser.add_argument("-o", type=str, required=False, help="Path to save array of lung mask volumes.")
     args = parser.parse_args()
     dir = args.dir
     out = args.o
