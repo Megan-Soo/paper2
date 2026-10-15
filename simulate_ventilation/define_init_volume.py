@@ -1,9 +1,7 @@
-#!/usr/bin/env python
-import os, sys, argparse
-import numpy as np
-import polyscope as ps
+#!/usr/bin/env python3
+import os, argparse
 from aether.diagnostics import set_diagnostics_on
-from aether.indices import ventilation_indices, get_ne_radius
+from aether.indices import ventilation_indices
 from aether.geometry import define_node_geometry, define_1d_elements, define_rad_from_file, append_units
 from aether.geometry import define_init_volume
 from aether.ventilation import evaluate_vent
