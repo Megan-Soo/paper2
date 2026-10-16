@@ -37,7 +37,7 @@ def main():
     ventilation_indices()
     
     # Read params_evaluate_flow
-    print(f' Subject {subject}')
+    if subject: print(f' Subject {subject}')
     if not volume_target:
         volume_target = weight * 6 * 10**6 # Assume 6 mL/kg. convert L to mm3.
     n_samples = 10-1 # 10 timesteps - 1 FRC @ t=0. t export terminal at sampling intervals of T_interval. To match MoCoLoR timestep, T_sample = T_interval/n_phases
