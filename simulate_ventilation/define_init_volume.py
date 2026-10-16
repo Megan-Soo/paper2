@@ -22,7 +22,7 @@ def main():
     args=parser.parse_args()
     subject = args.s
     in_dir = args.in_dir
-    weight = args.w
+    weight = args.weight
     volume_target = args.v
     T_interval = args.t
     child = args.child
