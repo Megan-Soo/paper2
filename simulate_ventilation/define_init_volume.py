@@ -16,7 +16,7 @@ def main():
     parser.add_argument("-w","--weight",type=float,help="Subject weight (kg) to estimate chest wall compliance (CWC).")
     parser.add_argument("-v",type=float,help="Subject tidal volume (L).")
     parser.add_argument("-t",type=float,required=True,help="Duration of one breath cycle (s).")
-    parser.add_argument("--child",action="store_true",help="CWC adult 3 cmH2O/mL/kg; CWC child 4 cmH2O/mL/kg [Sharp1970]")
+    parser.add_argument("--child",action="store_true",help="CWC adult 3 mL/cmH2O/kg; CWC child 4 mL/cmH2O/kg [Sharp1970]")
     parser.add_argument("-n",type=int,default=0,help="Exports files at n intervals across the breath cycle.")
     parser.add_argument("-ie",type=float,default=1.0,help="Inspiration:Expiration duration ratio.")
     args=parser.parse_args()
@@ -40,8 +40,8 @@ def main():
     if subject: print(f' Subject {subject}')
     if not volume_target:
         volume_target = weight * 6 * 10**6 # Assume 6 mL/kg. convert L to mm3.
-    n_samples = 10-1 # 10 timesteps - 1 FRC @ t=0. t export terminal at sampling intervals of T_interval. To match MoCoLoR timestep, T_sample = T_interval/n_phases
-    if n_samples is not None:
+    if n_samples>0:
+        n_samples = n_samples-1 # 10 timesteps - 1 FRC @ t=0. t export terminal at sampling intervals of T_interval. To match MoCoLoR timestep, T_sample = T_interval/n_phases
         path_sample = output_directory+'/terminal' # if '', will not export sample solution
     else:
         path_sample = ''
@@ -50,7 +50,7 @@ def main():
     pmus_step = -196.133
     if child: x=4
     else: x=3 # adult
-    chest_wall_compliance = weight * x
+    chest_wall_compliance = weight * x # mL/cmH2O
     print(f" Estimated Chest wall compliance: {chest_wall_compliance} mL/cmH2O")
     chest_wall_compliance = chest_wall_compliance * (10**3/98.0665) # convert mL/cmH2O to mm3/Pa
     read_params_evaluate_flow(T_interval, press_in, ie_ratio, refvol, volume_target, pmus_step, chest_wall_compliance,n_samples,path_sample)
