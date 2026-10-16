@@ -20,7 +20,7 @@ def main():
     parser.add_argument("-n",type=int,default=0,help="Exports files at n intervals across the breath cycle.")
     parser.add_argument("-ie",type=float,default=1.0,help="Inspiration:Expiration duration ratio.")
     args=parser.parse_args()
-    subject = args.subject
+    subject = args.s
     in_dir = args.in_dir
     weight = args.w
     volume_target = args.v
