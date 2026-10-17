@@ -203,10 +203,10 @@ def label_bins(image_array, bin_edges):
 
     return labeled_arr
 
-def export_arr_to_img(arr, output_path):
+def export_arr_to_img(arr, img, output_path):
     image = sitk.GetImageFromArray(arr)
     image = sitk.Cast(image,sitk.sitkUInt8)
-    image.CopyInformation(image)
+    image.CopyInformation(img)
     sitk.WriteImage(image, output_path)
     print(f" Saved bin-labelled mask to {output_path}")
 
@@ -566,7 +566,7 @@ def main():
     # === Tissue unit generation
     arr_bin_label = label_bins(arr_densities, bin_edges) # Assign unique labels to bins
     if save=='y':
-        export_arr_to_img(arr_bin_label,os.path.join(output_dir, 'density_bins.nii.gz')) # Export bin labels mask
+        export_arr_to_img(arr_bin_label,image,os.path.join(output_dir, 'density_bins.nii.gz')) # Export bin labels mask
     # step4 = np.flip(np.transpose(arr_bin_label,(2,1,0)),2)
 
     # Sample tissue units per region based on median density
